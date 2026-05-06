@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Renamer — photos.dm7m.com</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e; --surface: #161616; --surface2: #1f1f1f;
+    --border: #2a2a2a; --accent: #d4f57a; --text: #f0f0f0;
+    --text-muted: #777; --text-dim: #444; --warning: #ffb347;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; pointer-events: none; z-index: 0; }
+  .wrapper { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+  header { margin-bottom: 48px; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .logo::before { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+  h1 { font-size: clamp(28px,5vw,42px); font-weight: 600; line-height: 1.1; letter-spacing: -0.03em; }
+  h1 span { color: var(--accent); }
+  .subtitle { margin-top: 10px; color: var(--text-muted); font-size: 14px; font-weight: 300; line-height: 1.6; }
+  .steps { display: flex; margin-bottom: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .step { flex: 1; padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; color: var(--text-dim); border-right: 1px solid var(--border); transition: all 0.3s; }
+  .step:last-child { border-right: none; }
+  .step.active { color: var(--text); background: var(--surface2); }
+  .step.done { color: var(--accent); }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 10px; flex-shrink: 0; transition: all 0.3s; }
+  .step.active .step-num, .step.done .step-num { background: var(--accent); color: #000; }
+  .step-label { display: none; }
+  @media (min-width: 480px) { .step-label { display: inline; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; margin-bottom: 20px; }
+  .card-title { font-size: 11px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .drop-zone { border: 1.5px dashed var(--border); border-radius: var(--radius-sm); padding: 48px 24px; text-align: center; cursor: pointer; transition: all 0.25s; }
+  .drop-zone:hover { border-color: var(--accent); background: rgba(212,245,122,0.03); }
+  .drop-icon { font-size: 36px; margin-bottom: 14px; display: block; opacity: 0.5; }
+  .drop-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .drop-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+  .btn-browse { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  #fileInput, #logInput { display: none; }
+  .log-section { display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+  .log-icon { font-size: 22px; flex-shrink: 0; }
+  .log-info { flex: 1; }
+  .log-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .log-status { font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+  .log-status.loaded { color: var(--accent); }
+  .btn-log { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 7px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+  .preview-header { display: flex; align-items: center; margin-bottom: 14px; }
+  .preview-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); }
+  .preview-count span { color: var(--accent); font-weight: 500; }
+  .preview-list { max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .preview-item { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .preview-item:last-child { border-bottom: none; }
+  .file-old { font-family: 'DM Mono', monospace; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .arrow { color: var(--accent); font-size: 14px; flex-shrink: 0; }
+  .file-new { font-family: 'DM Mono', monospace; color: var(--accent); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .file-warn { color: var(--warning) !important; }
+  .warn-banner { background: rgba(255,179,71,0.08); border: 1px solid rgba(255,179,71,0.25); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--warning); margin-bottom: 16px; display: none; }
+  .warn-banner.visible { display: block; }
+  .actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .success-card { text-align: center; padding: 48px 28px; }
+  .success-icon { font-size: 48px; margin-bottom: 16px; display: block; }
+  .success-title { font-size: 22px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+  .success-sub { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 28px; }
+  .log-reminder { background: rgba(212,245,122,0.06); border: 1px solid rgba(212,245,122,0.2); border-radius: var(--radius-sm); padding: 16px 20px; margin-bottom: 24px; text-align: left; }
+  .log-reminder-title { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .log-reminder-text { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .empty { text-align: center; padding: 32px; color: var(--text-dim); font-size: 13px; }
+  .section { display: none; }
+  .section.visible { display: block; }
+  footer { text-align: center; margin-top: 64px; font-size: 11px; color: var(--text-dim); font-family: 'DM Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo">photos.dm7m.com</div>
+    <h1>Photo <span>Renamer</span></h1>
+    <p class="subtitle">Rename your photos by capture date — clean, consistent, forever sortable.</p>
+  </header>
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div><span class="step-label">Log File</span></div>
+    <div class="step" id="step2"><div class="step-num">2</div><span class="step-label">Photos</span></div>
+    <div class="step" id="step3"><div class="step-num">3</div><span class="step-label">Preview</span></div>
+    <div class="step" id="step4"><div class="step-num">4</div><span class="step-label">Done</span></div>
+  </div>
+  <div class="card section visible" id="sectionLog">
+    <div class="card-title">Step 1 — Load Memory Log</div>
+    <div class="log-section" id="logSection">
+      <div class="log-icon">🗂️</div>
+      <div class="log-info">
+        <div class="log-name">renamer-log.json</div>
+        <div class="log-status" id="logStatus">No log loaded — first time? That's fine, skip ahead.</div>
+      </div>
+      <button class="btn-log">Upload Log</button>
+    </div>
+    <input type="file" id="logInput" accept=".json">
+    <div class="actions">
+      <button class="btn-primary" id="btnContinue">Continue →</button>
+    </div>
+  </div>
+  <div class="card section" id="sectionPhotos">
+    <div class="card-title">Step 2 — Select Your Photos</div>
+    <div class="drop-zone" id="dropZone">
+      <span class="drop-icon">📷</span>
+      <div class="drop-title">Click or drag photos here</div>
+      <div class="drop-sub">JPG, HEIC, PNG and most photo formats supported</div>
+      <button class="btn-browse" id="btnBrowse">Browse Files</button>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*,.heic,.HEIC">
+    <div class="actions">
+      <button class="btn-secondary" id="btnBack2">← Back</button>
+    </div>
+  </div>
+  <div class="card section" id="sectionPreview">
+    <div class="card-title">Step 3 — Review & Confirm</div>
+    <div class="warn-banner" id="warnBanner"></div>
+    <div class="preview-header">
+      <div class="preview-count"><span id="photoCount">0</span> photos ready to rename</div>
+    </div>
+    <div class="preview-list" id="previewList"></div>
+    <div class="actions">
+      <button class="btn-primary" id="confirmBtn">✦ Rename & Download</button>
+      <button class="btn-secondary" id="btnBack3">← Back</button>
+    </div>
+  </div>
+  <div class="card section" id="sectionDone">
+    <div class="success-card">
+      <span class="success-icon">✦</span>
+      <div class="success-title">All done!</div>
+      <div class="success-sub" id="successMsg">Your renamed photos have been downloaded.</div>
+      <div class="log-reminder">
+        <div class="log-reminder-title">⚠ Save your log file</div>
+        <div class="log-reminder-text">A file called <strong>renamer-log.json</strong> was downloaded alongside your photos.<br>Keep it — you'll upload it next time so numbers stay in sequence.</div>
+      </div>
+      <div class="actions" style="justify-content:center">
+        <button class="btn-primary" id="btnStartOver">Rename More Photos</button>
+      </div>
+    </div>
+  </div>
+  <footer>photos.dm7m.com — built for personal use</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script>
+var memoryLog = {}, selectedFiles = [], previewData = [], sessionLog = {};
+
+function showStep(n) {
+  ['sectionLog','sectionPhotos','sectionPreview','sectionDone'].forEach(function(id,i) {
+    document.getElementById(id).classList[i===n-1?'add':'remove']('visible');
+  });
+  for (var j=1;j<=4;j++) {
+    var el = document.getElementById('step'+j);
+    el.classList.remove('active','done');
+    if (j<n) el.classList.add('done');
+    else if (j===n) el.classList.add('active');
+  }
+  window.scrollTo(0,0);
+}
+
+document.getElementById('btnContinue').addEventListener('click', function(){ showStep(2); });
+document.getElementById('btnBack2').addEventListener('click', function(){ showStep(1); });
+document.getElementById('btnBack3').addEventListener('click', function(){ showStep(2); });
+
+document.getElementById('logSection').addEventListener('click', function(){ document.getElementById('logInput').click(); });
+document.getElementById('logInput').addEventListener('change', function(e) {
+  var file = e.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      memoryLog = JSON.parse(ev.target.result);
+      var k = Object.keys(memoryLog).length;
+      document.getElementById('logStatus').textContent = 'Loaded — '+k+' date(s) remembered';
+      document.getElementById('logStatus').className = 'log-status loaded';
+    } catch(err) { alert('Could not read the log file.'); }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('dropZone').addEventListener('click', function(){ document.getElementById('fileInput').click(); });
+document.getElementById('btnBrowse').addEventListener('click', function(e){ e.stopPropagation(); document.getElementById('fileInput').click(); });
+document.getElementById('dropZone').addEventListener('dragover', function(e){ e.preventDefault(); });
+document.getElementById('dropZone').addEventListener('drop', function(e){ e.preventDefault(); handleFiles(Array.prototype.slice.call(e.dataTransfer.files)); });
+document.getElementById('fileInput').addEventListener('change', function(e){ handleFiles(Array.prototype.slice.call(e.target.files)); });
+
+function handleFiles(files) {
+  var imgs = files.filter(function(f){ return (f.type&&f.type.indexOf('image/')===0)||f.name.toLowerCase().slice(-5)==='.heic'; });
+  if (!imgs.length) { alert('No supported image files found.'); return; }
+  selectedFiles = imgs; showStep(3); buildPreview();
+}
+
+function buildPreview() {
+  document.getElementById('previewList').innerHTML = '<div class="empty">Reading photo metadata…</div>';
+  sessionLog = JSON.parse(JSON.stringify(memoryLog));
+  previewData = []; var warnCount = 0; var idx = 0;
+  function next() {
+    if (idx >= selectedFiles.length) { renderPreview(warnCount); return; }
+    var file = selectedFiles[idx++];
+    exifr.parse(file, ['DateTimeOriginal','CreateDate','DateTime']).then(function(exif) {
+      var d = null, warn = false;
+      if (exif) d = exif.DateTimeOriginal||exif.CreateDate||exif.DateTime;
+      if (!(d instanceof Date)||isNaN(d.getTime())) { d = new Date(file.lastModified); warn = true; warnCount++; }
+      var dk = fmtDate(d);
+      sessionLog[dk] = (sessionLog[dk]||0)+1;
+      previewData.push({ file:file, newName:dk+'_'+pad(sessionLog[dk])+'.'+getExt(file.name), warn:warn });
+      next();
+    }).catch(function() {
+      var d = new Date(file.lastModified); var dk = fmtDate(d);
+      sessionLog[dk] = (sessionLog[dk]||0)+1;
+      previewData.push({ file:file, newName:dk+'_'+pad(sessionLog[dk])+'.'+getExt(file.name), warn:true });
+      warnCount++; next();
+    });
+  }
+  next();
+}
+
+function renderPreview(warnCount) {
+  var el = document.getElementById('previewList'); el.innerHTML = '';
+  previewData.forEach(function(item) {
+    var div = document.createElement('div'); div.className = 'preview-item';
+    div.innerHTML = '<div class="file-old">'+esc(item.file.name)+'</div><div class="arrow">→</div><div class="file-new'+(item.warn?' file-warn':'')+'" >'+esc(item.newName)+'</div>';
+    el.appendChild(div);
+  });
+  document.getElementById('photoCount').textContent = previewData.length;
+  var wb = document.getElementById('warnBanner');
+  if (warnCount>0) { wb.textContent = '⚠ '+warnCount+' photo(s) had no capture date. File-modified date used (shown in orange).'; wb.classList.add('visible'); }
+  else wb.classList.remove('visible');
+}
+
+document.getElementById('confirmBtn').addEventListener('click', function() {
+  var btn = document.getElementById('confirmBtn'); btn.disabled = true; btn.textContent = 'Preparing downloads…';
+  var i = 0;
+  function dlNext() {
+    if (i>=previewData.length) { dlLog(); return; }
+    var item = previewData[i++];
+    var url = URL.createObjectURL(item.file);
+    var a = document.createElement('a'); a.href=url; a.download=item.newName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); dlNext(); }, 400);
+  }
+  function dlLog() {
+    var blob = new Blob([JSON.stringify(sessionLog,null,2)],{type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href=url; a.download='renamer-log.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },300);
+    document.getElementById('successMsg').textContent = previewData.length+' photo'+(previewData.length!==1?'s':'')+' renamed and downloaded.';
+    showStep(4);
+  }
+  dlNext();
+});
+
+document.getElementById('btnStartOver').addEventListener('click', function() {
+  selectedFiles=[]; previewData=[];
+  document.getElementById('fileInput').value=''; document.getElementById('logInput').value='';
+  memoryLog = JSON.parse(JSON.stringify(sessionLog));
+  var k = Object.keys(memoryLog).length;
+  document.getElementById('logStatus').textContent = 'Log active — '+k+' date(s) remembered';
+  document.getElementById('logStatus').className = 'log-status loaded';
+  showStep(1);
+});
+
+function fmtDate(d){ var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+day; }
+function getExt(n){ var p=n.split('.'); return p.length>1?p[p.length-1].toLowerCase():'jpg'; }
+function pad(n){ return String(n).padStart(3,'0'); }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
