@@ -153,6 +153,19 @@ h1 em{font-style:normal;color:var(--accent)}
 .stat-num{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.02em}
 .stat-lbl{font-size:10px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:3px;font-weight:500}
 
+/* ── Download mode toggle ── */
+.dl-toggle{display:flex;gap:8px;margin-bottom:20px}
+.dl-option{flex:1;display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;transition:border-color 0.2s,background 0.2s;user-select:none}
+.dl-option:hover{border-color:var(--text-muted)}
+.dl-option.selected{border-color:var(--accent);background:var(--accent-dim)}
+.dl-option input[type=radio]{display:none}
+.dl-icon{font-size:22px;flex-shrink:0;opacity:0.7}
+.dl-info{flex:1}
+.dl-title{font-size:13px;font-weight:600;margin-bottom:2px;letter-spacing:-0.01em}
+.dl-desc{font-size:11px;color:var(--text-muted);line-height:1.4}
+.dl-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:background 0.2s,border-color 0.2s}
+.dl-option.selected .dl-check{background:var(--accent);border-color:var(--accent);color:#000}
+
 /* ── Misc ── */
 .empty{text-align:center;padding:36px;color:var(--text-muted);font-size:13px}
 .section{display:none}
@@ -247,6 +260,27 @@ footer{text-align:center;margin-top:72px;font-family:'Space Mono',monospace;font
   <div class="card section" id="sectionPreview">
     <div class="card-label">Step 4 — Review & Confirm</div>
     <div class="warn-banner" id="warnBanner"></div>
+
+    <div class="dl-toggle">
+      <label class="dl-option selected" id="optZip">
+        <input type="radio" name="dlMode" value="zip" checked>
+        <div class="dl-icon">🗜️</div>
+        <div class="dl-info">
+          <div class="dl-title">Download as ZIP</div>
+          <div class="dl-desc">All photos + log file in one archive</div>
+        </div>
+        <div class="dl-check">✓</div>
+      </label>
+      <label class="dl-option" id="optFiles">
+        <input type="radio" name="dlMode" value="files">
+        <div class="dl-icon">📂</div>
+        <div class="dl-info">
+          <div class="dl-title">Download individually</div>
+          <div class="dl-desc">Each photo saved as a separate file</div>
+        </div>
+        <div class="dl-check"></div>
+      </label>
+    </div>
 
     <div class="stats-row">
       <div class="stat-pill"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Photos</div></div>
@@ -426,8 +460,72 @@ function renderPreview(warnCount) {
   }
 }
 
-/* ── Confirm / ZIP ── */
+/* ── Download mode toggle ── */
+var dlMode = 'zip';
+document.querySelectorAll('.dl-option').forEach(function(opt) {
+  opt.addEventListener('click', function() {
+    document.querySelectorAll('.dl-option').forEach(function(o) {
+      o.classList.remove('selected');
+      o.querySelector('.dl-check').textContent = '';
+    });
+    opt.classList.add('selected');
+    opt.querySelector('.dl-check').textContent = '✓';
+    dlMode = opt.querySelector('input').value;
+    var btn = document.getElementById('confirmBtn');
+    btn.textContent = dlMode === 'zip' ? '✦ Rename & Download ZIP' : '✦ Rename & Download Files';
+  });
+});
+
+/* ── Confirm ── */
 document.getElementById('confirmBtn').addEventListener('click', function() {
+  if (dlMode === 'files') { downloadIndividual(); } else { downloadZip(); }
+});
+
+function downloadIndividual() {
+  var btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  var pw = document.getElementById('progressWrap');
+  var pf = document.getElementById('progressFill');
+  var pl = document.getElementById('progressLabel');
+  pw.classList.add('visible'); pf.style.width = '0%';
+  var total = previewData.length;
+  var done = 0;
+
+  function saveNext() {
+    if (done >= total) {
+      pf.style.width = '100%';
+      pl.textContent = 'Done!';
+      document.getElementById('successMsg').textContent =
+        total+' photo'+(total !== 1 ? 's' : '')+' renamed and saved individually.';
+      // Still save log as a separate download
+      var logBlob = new Blob([JSON.stringify(sessionLog, null, 2)], {type:'application/json'});
+      var la = document.createElement('a');
+      la.href = URL.createObjectURL(logBlob);
+      la.download = 'renamer-log.json';
+      document.body.appendChild(la); la.click(); document.body.removeChild(la);
+      showStep(5);
+      return;
+    }
+    var item = previewData[done];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var blob = new Blob([e.target.result]);
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = item.newName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      done++;
+      pf.style.width = Math.round((done / total) * 100) + '%';
+      pl.textContent = done + ' / ' + total + ' saved…';
+      setTimeout(saveNext, 200);
+    };
+    reader.readAsArrayBuffer(item.file);
+  }
+  saveNext();
+}
+
+function downloadZip() {
   var btn = document.getElementById('confirmBtn');
   btn.disabled = true; btn.textContent = 'Building ZIP…';
   var pw = document.getElementById('progressWrap');
@@ -470,7 +568,7 @@ document.getElementById('confirmBtn').addEventListener('click', function() {
     reader.readAsArrayBuffer(item.file);
   }
   addNext();
-});
+}
 
 /* ── Start over ── */
 document.getElementById('btnStartOver').addEventListener('click', function() {
@@ -487,6 +585,10 @@ document.getElementById('btnStartOver').addEventListener('click', function() {
   document.getElementById('progressWrap').classList.remove('visible');
   document.getElementById('confirmBtn').disabled = false;
   document.getElementById('confirmBtn').textContent = '✦ Rename & Download ZIP';
+  dlMode = 'zip';
+  document.querySelectorAll('.dl-option').forEach(function(o){ o.classList.remove('selected'); o.querySelector('.dl-check').textContent=''; });
+  document.getElementById('optZip').classList.add('selected');
+  document.getElementById('optZip').querySelector('.dl-check').textContent='✓';
   showStep(1);
 });
 
