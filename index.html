@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Renamer — photos.dm7m.com</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080b0f;
+  --surface: #0f1318;
+  --surface2: #161c23;
+  --surface3: #1c242e;
+  --border: #1e2832;
+  --border2: #273040;
+  --accent: #7fff6e;
+  --accent2: #5ae04a;
+  --accent-dim: rgba(127,255,110,0.08);
+  --accent-glow: rgba(127,255,110,0.15);
+  --text: #e8edf2;
+  --text-muted: #5a6878;
+  --text-mid: #8898aa;
+  --warning: #f5a623;
+  --warning-dim: rgba(245,166,35,0.08);
+  --red: #ff5f57;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --radius-xs: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden}
+
+/* Ambient background */
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 60% 40% at 20% 10%, rgba(127,255,110,0.04) 0%, transparent 60%),
+  radial-gradient(ellipse 50% 50% at 80% 80%, rgba(90,160,255,0.03) 0%, transparent 60%);
+  pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size:28px 28px;opacity:0.4;pointer-events:none;z-index:0}
+
+.wrapper{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:56px 24px 100px}
+
+/* ── Header ── */
+header{margin-bottom:56px}
+.logo-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.logo-badge{background:var(--accent-dim);border:1px solid rgba(127,255,110,0.2);border-radius:100px;padding:5px 12px 5px 8px;display:flex;align-items:center;gap:7px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--accent);text-transform:uppercase}
+.logo-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 2.4s ease-in-out infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.8)}}
+h1{font-size:clamp(32px,6vw,52px);font-weight:700;line-height:1.05;letter-spacing:-0.04em;color:var(--text)}
+h1 em{font-style:normal;color:var(--accent)}
+.subtitle{margin-top:12px;color:var(--text-muted);font-size:14px;font-weight:400;line-height:1.7;max-width:440px}
+
+/* ── Step indicator ── */
+.steps{display:flex;gap:0;margin-bottom:32px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative}
+.step{flex:1;padding:14px 16px;display:flex;align-items:center;gap:9px;font-size:12px;font-weight:500;color:var(--text-muted);border-right:1px solid var(--border);transition:color 0.3s,background 0.3s;cursor:default;white-space:nowrap}
+.step:last-child{border-right:none}
+.step.active{color:var(--text);background:var(--surface2)}
+.step.done{color:var(--accent)}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:10px;flex-shrink:0;transition:background 0.3s,color 0.3s}
+.step.active .step-num,.step.done .step-num{background:var(--accent);color:#000}
+.step-label{display:none}
+@media(min-width:480px){.step-label{display:inline}}
+
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;margin-bottom:16px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent)}
+.card-label{font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:22px;display:flex;align-items:center;gap:10px}
+.card-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Log upload row ── */
+.log-row{display:flex;align-items:center;gap:14px;padding:15px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color 0.2s}
+.log-row:hover{border-color:var(--border2)}
+.log-icon{font-size:20px;flex-shrink:0;opacity:0.7}
+.log-info{flex:1;min-width:0}
+.log-name{font-size:13px;font-weight:600;margin-bottom:2px;letter-spacing:-0.01em}
+.log-status{font-size:11px;color:var(--text-muted);font-family:'Space Mono',monospace}
+.log-status.loaded{color:var(--accent)}
+.btn-upload{background:var(--surface3);border:1px solid var(--border2);color:var(--text-mid);padding:7px 14px;border-radius:var(--radius-xs);font-size:11px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;letter-spacing:0.02em;flex-shrink:0;transition:border-color 0.2s,color 0.2s}
+.btn-upload:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Drop zone ── */
+.drop-zone{border:1.5px dashed var(--border2);border-radius:var(--radius-sm);padding:52px 24px;text-align:center;cursor:pointer;transition:border-color 0.25s,background 0.25s;position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--accent-dim)}
+.drop-icon-wrap{width:56px;height:56px;border-radius:14px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:26px;transition:border-color 0.2s}
+.drop-zone:hover .drop-icon-wrap{border-color:var(--accent)}
+.drop-title{font-size:16px;font-weight:600;margin-bottom:6px;letter-spacing:-0.02em}
+.drop-sub{font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.6}
+.btn-browse{display:inline-flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:9px 18px;border-radius:var(--radius-xs);font-size:12px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:border-color 0.2s}
+.btn-browse:hover{border-color:var(--accent)}
+
+/* ── Prefix/Suffix UI ── */
+.affix-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end;margin-top:22px}
+.affix-group{display:flex;flex-direction:column;gap:6px}
+.affix-label{font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted)}
+.affix-input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-xs);padding:9px 12px;font-family:'Space Mono',monospace;font-size:12px;color:var(--text);outline:none;transition:border-color 0.2s;width:100%}
+.affix-input::placeholder{color:var(--text-muted);opacity:0.5}
+.affix-input:focus{border-color:var(--accent)}
+.affix-sep{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);text-align:center;padding-bottom:10px;line-height:1}
+.affix-sep span{display:block;color:var(--accent);font-size:13px;margin-bottom:4px}
+.preview-name-box{background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius-xs);padding:8px 12px;font-family:'Space Mono',monospace;font-size:11px;margin-top:14px;color:var(--text-mid);display:flex;align-items:center;gap:0;overflow:hidden;flex-wrap:wrap;line-height:1.7}
+.pn-affix{color:var(--accent);font-weight:700}
+.pn-base{color:var(--text-mid)}
+.pn-sep{color:var(--border2)}
+
+/* ── Preview list ── */
+.preview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.preview-count{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)}
+.preview-count b{color:var(--accent);font-weight:700}
+.preview-list{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.preview-list::-webkit-scrollbar{width:4px}
+.preview-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.preview-item{display:grid;grid-template-columns:1fr 20px 1fr;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:11.5px;transition:background 0.15s}
+.preview-item:last-child{border-bottom:none}
+.preview-item:hover{background:var(--surface2)}
+.file-old{font-family:'Space Mono',monospace;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arrow{color:var(--border2);text-align:center;font-size:12px}
+.file-new{font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.file-warn{color:var(--warning)!important}
+.warn-banner{background:var(--warning-dim);border:1px solid rgba(245,166,35,0.2);border-radius:var(--radius-sm);padding:12px 16px;font-size:12px;color:var(--warning);margin-bottom:16px;display:none;line-height:1.5}
+.warn-banner.visible{display:block}
+
+/* ── Actions ── */
+.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#060e04;border:none;padding:12px 24px;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;letter-spacing:-0.01em;transition:background 0.2s,transform 0.15s}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:active{transform:scale(0.98)}
+.btn-primary:disabled{opacity:0.35;cursor:not-allowed;transform:none}
+.btn-secondary{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--text-muted);border:1px solid var(--border2);padding:12px 20px;border-radius:var(--radius-xs);font-size:14px;font-weight:500;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:border-color 0.2s,color 0.2s}
+.btn-secondary:hover{border-color:var(--text-muted);color:var(--text)}
+
+/* ── Progress ── */
+.progress-wrap{margin-top:18px;display:none}
+.progress-wrap.visible{display:block}
+.progress-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s}
+.progress-label{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:7px}
+
+/* ── Success ── */
+.success-card{padding:52px 28px;text-align:center}
+.success-icon-wrap{width:72px;height:72px;border-radius:20px;background:var(--accent-dim);border:1px solid rgba(127,255,110,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:32px}
+.success-title{font-size:26px;font-weight:700;color:var(--accent);letter-spacing:-0.03em;margin-bottom:8px}
+.success-sub{color:var(--text-muted);font-size:14px;line-height:1.7;margin-bottom:28px;max-width:380px;margin-left:auto;margin-right:auto}
+.log-reminder{background:var(--accent-dim);border:1px solid rgba(127,255,110,0.15);border-radius:var(--radius-sm);padding:16px 20px;margin-bottom:24px;text-align:left}
+.log-reminder-title{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.log-reminder-text{font-size:12px;color:var(--text-mid);line-height:1.65}
+.log-reminder-text strong{color:var(--text);font-weight:600}
+
+/* ── Stats row ── */
+.stats-row{display:flex;gap:10px;margin-bottom:20px}
+.stat-pill{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;text-align:center}
+.stat-num{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.02em}
+.stat-lbl{font-size:10px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:3px;font-weight:500}
+
+/* ── Misc ── */
+.empty{text-align:center;padding:36px;color:var(--text-muted);font-size:13px}
+.section{display:none}
+.section.visible{display:block}
+#fileInput,#logInput{display:none}
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+footer{text-align:center;margin-top:72px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;opacity:0.5}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-badge"><div class="logo-dot"></div>photos.dm7m.com</div>
+    </div>
+    <h1>Photo <em>Renamer</em></h1>
+    <p class="subtitle">Rename your photos by capture date — clean, consistent, forever sortable.</p>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div><span class="step-label">Log</span></div>
+    <div class="step" id="step2"><div class="step-num">2</div><span class="step-label">Photos</span></div>
+    <div class="step" id="step3"><div class="step-num">3</div><span class="step-label">Options</span></div>
+    <div class="step" id="step4"><div class="step-num">4</div><span class="step-label">Preview</span></div>
+    <div class="step" id="step5"><div class="step-num">5</div><span class="step-label">Done</span></div>
+  </div>
+
+  <!-- Step 1: Log -->
+  <div class="card section visible" id="sectionLog">
+    <div class="card-label">Step 1 — Memory Log</div>
+    <div class="log-row" id="logSection">
+      <div class="log-icon">🗂️</div>
+      <div class="log-info">
+        <div class="log-name">renamer-log.json</div>
+        <div class="log-status" id="logStatus">No log loaded — first time? That's fine.</div>
+      </div>
+      <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('logInput').click()">Upload Log</button>
+    </div>
+    <input type="file" id="logInput" accept=".json">
+    <div class="actions">
+      <button class="btn-primary" id="btnContinue">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Photos -->
+  <div class="card section" id="sectionPhotos">
+    <div class="card-label">Step 2 — Select Photos</div>
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon-wrap">📷</div>
+      <div class="drop-title">Drop photos here</div>
+      <div class="drop-sub">JPG, HEIC, PNG, WEBP and most formats supported<br>Multiple files and folders welcome</div>
+      <button class="btn-browse" id="btnBrowse">Browse Files</button>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*,.heic,.HEIC">
+    <div class="actions">
+      <button class="btn-secondary" id="btnBack2">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Options (Prefix / Suffix) -->
+  <div class="card section" id="sectionOptions">
+    <div class="card-label">Step 3 — Naming Options</div>
+    <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:20px">Optionally add a prefix or suffix around the generated date-based name. Leave blank to use the default format.</p>
+
+    <div class="affix-row">
+      <div class="affix-group">
+        <div class="affix-label">Prefix</div>
+        <input class="affix-input" id="prefixInput" type="text" placeholder="e.g. vacation_" maxlength="40">
+      </div>
+      <div class="affix-sep"><span>↔</span>date_001</div>
+      <div class="affix-group">
+        <div class="affix-label">Suffix</div>
+        <input class="affix-input" id="suffixInput" type="text" placeholder="e.g. _edited" maxlength="40">
+      </div>
+    </div>
+
+    <div class="preview-name-box" id="affixPreview">
+      <span class="pn-base">Preview: </span>
+      <span id="pnPrefix" class="pn-affix"></span><span class="pn-base" id="pnBase">2025-06-14_001</span><span id="pnSuffix" class="pn-affix"></span><span class="pn-base">.jpg</span>
+    </div>
+
+    <div class="divider"></div>
+    <div class="actions">
+      <button class="btn-primary" id="btnBuildPreview">Preview Names →</button>
+      <button class="btn-secondary" id="btnBack3">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Preview -->
+  <div class="card section" id="sectionPreview">
+    <div class="card-label">Step 4 — Review & Confirm</div>
+    <div class="warn-banner" id="warnBanner"></div>
+
+    <div class="stats-row">
+      <div class="stat-pill"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Photos</div></div>
+      <div class="stat-pill"><div class="stat-num" id="statDates">0</div><div class="stat-lbl">Dates</div></div>
+      <div class="stat-pill"><div class="stat-num" id="statWarns" style="color:var(--warning)">0</div><div class="stat-lbl">No EXIF</div></div>
+    </div>
+
+    <div class="preview-list" id="previewList"></div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Preparing…</div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="confirmBtn">✦ Rename &amp; Download ZIP</button>
+      <button class="btn-secondary" id="btnBack4">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Done -->
+  <div class="card section" id="sectionDone">
+    <div class="success-card">
+      <div class="success-icon-wrap">✦</div>
+      <div class="success-title">All done!</div>
+      <div class="success-sub" id="successMsg">Your renamed photos have been downloaded.</div>
+      <div class="log-reminder">
+        <div class="log-reminder-title">⚠ Save your log file</div>
+        <div class="log-reminder-text">Inside the ZIP is a <strong>renamer-log.json</strong> file.<br>Keep it and upload it next time so numbers stay in sequence.</div>
+      </div>
+      <div class="actions" style="justify-content:center">
+        <button class="btn-primary" id="btnStartOver">Rename More Photos</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>photos.dm7m.com — built for personal use</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+var memoryLog = {}, selectedFiles = [], previewData = [], sessionLog = {};
+
+/* ── Steps ── */
+function showStep(n) {
+  var sections = ['sectionLog','sectionPhotos','sectionOptions','sectionPreview','sectionDone'];
+  sections.forEach(function(id, i) {
+    document.getElementById(id).classList[i === n-1 ? 'add' : 'remove']('visible');
+  });
+  for (var j = 1; j <= 5; j++) {
+    var el = document.getElementById('step'+j);
+    el.classList.remove('active','done');
+    if (j < n) el.classList.add('done');
+    else if (j === n) el.classList.add('active');
+  }
+  window.scrollTo(0, 0);
+}
+
+/* ── Log upload ── */
+document.getElementById('logSection').addEventListener('click', function() {
+  document.getElementById('logInput').click();
+});
+document.getElementById('logInput').addEventListener('change', function(e) {
+  var file = e.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      memoryLog = JSON.parse(ev.target.result);
+      var k = Object.keys(memoryLog).length;
+      document.getElementById('logStatus').textContent = 'Loaded — '+k+' date(s) remembered';
+      document.getElementById('logStatus').className = 'log-status loaded';
+    } catch(err) { alert('Could not read the log file.'); }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('btnContinue').addEventListener('click', function(){ showStep(2); });
+document.getElementById('btnBack2').addEventListener('click', function(){ showStep(1); });
+document.getElementById('btnBack3').addEventListener('click', function(){ showStep(2); });
+document.getElementById('btnBack4').addEventListener('click', function(){ showStep(3); });
+
+/* ── Drop zone ── */
+var dz = document.getElementById('dropZone');
+dz.addEventListener('click', function(){ document.getElementById('fileInput').click(); });
+document.getElementById('btnBrowse').addEventListener('click', function(e){ e.stopPropagation(); document.getElementById('fileInput').click(); });
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag-over'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(Array.prototype.slice.call(e.dataTransfer.files)); });
+document.getElementById('fileInput').addEventListener('change', function(e){ handleFiles(Array.prototype.slice.call(e.target.files)); });
+
+function handleFiles(files) {
+  var imgs = files.filter(function(f){
+    return (f.type && f.type.indexOf('image/') === 0) || /\.(heic|heif)$/i.test(f.name);
+  });
+  if (!imgs.length) { alert('No supported image files found.'); return; }
+  selectedFiles = imgs;
+  showStep(3);
+}
+
+/* ── Affix live preview ── */
+function sanitizeAffix(v) {
+  return v.replace(/[^\w\-. ]/g, '').replace(/\s+/g, '_');
+}
+function updateAffixPreview() {
+  var pre = sanitizeAffix(document.getElementById('prefixInput').value);
+  var suf = sanitizeAffix(document.getElementById('suffixInput').value);
+  document.getElementById('pnPrefix').textContent = pre;
+  document.getElementById('pnSuffix').textContent = suf;
+}
+document.getElementById('prefixInput').addEventListener('input', updateAffixPreview);
+document.getElementById('suffixInput').addEventListener('input', updateAffixPreview);
+
+function buildFileName(dateKey, num, ext) {
+  var pre = sanitizeAffix(document.getElementById('prefixInput').value);
+  var suf = sanitizeAffix(document.getElementById('suffixInput').value);
+  return pre + dateKey + '_' + pad(num) + suf + '.' + ext;
+}
+
+/* ── Build preview ── */
+document.getElementById('btnBuildPreview').addEventListener('click', function() {
+  showStep(4);
+  buildPreview();
+});
+
+function buildPreview() {
+  document.getElementById('previewList').innerHTML = '<div class="empty">Reading photo metadata…</div>';
+  sessionLog = JSON.parse(JSON.stringify(memoryLog));
+  previewData = [];
+  var warnCount = 0;
+  var idx = 0;
+
+  function next() {
+    if (idx >= selectedFiles.length) { renderPreview(warnCount); return; }
+    var file = selectedFiles[idx++];
+    exifr.parse(file, ['DateTimeOriginal','CreateDate','DateTime']).then(function(exif) {
+      var d = null, warn = false;
+      if (exif) d = exif.DateTimeOriginal || exif.CreateDate || exif.DateTime;
+      if (!(d instanceof Date) || isNaN(d.getTime())) { d = new Date(file.lastModified); warn = true; warnCount++; }
+      var dk = fmtDate(d);
+      sessionLog[dk] = (sessionLog[dk] || 0) + 1;
+      previewData.push({ file: file, newName: buildFileName(dk, sessionLog[dk], getExt(file.name)), warn: warn });
+      next();
+    }).catch(function() {
+      var d = new Date(file.lastModified);
+      var dk = fmtDate(d);
+      sessionLog[dk] = (sessionLog[dk] || 0) + 1;
+      previewData.push({ file: file, newName: buildFileName(dk, sessionLog[dk], getExt(file.name)), warn: true });
+      warnCount++; next();
+    });
+  }
+  next();
+}
+
+function renderPreview(warnCount) {
+  var el = document.getElementById('previewList');
+  el.innerHTML = '';
+  previewData.forEach(function(item) {
+    var div = document.createElement('div');
+    div.className = 'preview-item';
+    div.innerHTML =
+      '<div class="file-old">'+esc(item.file.name)+'</div>'+
+      '<div class="arrow">→</div>'+
+      '<div class="file-new'+(item.warn?' file-warn':'')+'" title="'+esc(item.newName)+'">'+esc(item.newName)+'</div>';
+    el.appendChild(div);
+  });
+
+  var uniqueDates = Object.keys(sessionLog).length;
+  document.getElementById('statTotal').textContent = previewData.length;
+  document.getElementById('statDates').textContent = uniqueDates;
+  document.getElementById('statWarns').textContent = warnCount;
+
+  var wb = document.getElementById('warnBanner');
+  if (warnCount > 0) {
+    wb.textContent = '⚠ '+warnCount+' photo(s) had no EXIF capture date — file-modified date used instead (shown in orange).';
+    wb.classList.add('visible');
+  } else {
+    wb.classList.remove('visible');
+  }
+}
+
+/* ── Confirm / ZIP ── */
+document.getElementById('confirmBtn').addEventListener('click', function() {
+  var btn = document.getElementById('confirmBtn');
+  btn.disabled = true; btn.textContent = 'Building ZIP…';
+  var pw = document.getElementById('progressWrap');
+  var pf = document.getElementById('progressFill');
+  var pl = document.getElementById('progressLabel');
+  pw.classList.add('visible'); pf.style.width = '0%';
+
+  var zip = new JSZip();
+  var total = previewData.length;
+  var done = 0;
+
+  function addNext() {
+    if (done >= total) {
+      pf.style.width = '95%';
+      pl.textContent = 'Compressing…';
+      zip.file('renamer-log.json', JSON.stringify(sessionLog, null, 2));
+      zip.generateAsync({ type: 'blob', compression: 'STORE' }).then(function(blob) {
+        pf.style.width = '100%';
+        pl.textContent = 'Done!';
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'renamed-photos.zip';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+        document.getElementById('successMsg').textContent =
+          total+' photo'+(total !== 1 ? 's' : '')+' renamed and downloaded as renamed-photos.zip';
+        showStep(5);
+      });
+      return;
+    }
+    var item = previewData[done];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      zip.file(item.newName, e.target.result);
+      done++;
+      pf.style.width = Math.round((done / total) * 90) + '%';
+      pl.textContent = done + ' / ' + total + ' added…';
+      addNext();
+    };
+    reader.readAsArrayBuffer(item.file);
+  }
+  addNext();
+});
+
+/* ── Start over ── */
+document.getElementById('btnStartOver').addEventListener('click', function() {
+  selectedFiles = []; previewData = [];
+  document.getElementById('fileInput').value = '';
+  document.getElementById('logInput').value = '';
+  document.getElementById('prefixInput').value = '';
+  document.getElementById('suffixInput').value = '';
+  updateAffixPreview();
+  memoryLog = JSON.parse(JSON.stringify(sessionLog));
+  var k = Object.keys(memoryLog).length;
+  document.getElementById('logStatus').textContent = 'Log active — '+k+' date(s) remembered';
+  document.getElementById('logStatus').className = 'log-status loaded';
+  document.getElementById('progressWrap').classList.remove('visible');
+  document.getElementById('confirmBtn').disabled = false;
+  document.getElementById('confirmBtn').textContent = '✦ Rename & Download ZIP';
+  showStep(1);
+});
+
+/* ── Helpers ── */
+function fmtDate(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function getExt(n) { var p = n.split('.'); return p.length > 1 ? p[p.length-1].toLowerCase() : 'jpg'; }
+function pad(n) { return String(n).padStart(3, '0'); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
