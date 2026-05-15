@@ -73,6 +73,9 @@
   .log-reminder-title { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
   .log-reminder-text { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
   .empty { text-align: center; padding: 32px; color: var(--text-dim); font-size: 13px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 16px; overflow: hidden; display: none; }
+  .progress-bar.visible { display: block; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.3s; }
   .section { display: none; }
   .section.visible { display: block; }
   footer { text-align: center; margin-top: 64px; font-size: 11px; color: var(--text-dim); font-family: 'DM Mono', monospace; }
@@ -126,8 +129,9 @@
       <div class="preview-count"><span id="photoCount">0</span> photos ready to rename</div>
     </div>
     <div class="preview-list" id="previewList"></div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
     <div class="actions">
-      <button class="btn-primary" id="confirmBtn">✦ Rename & Download</button>
+      <button class="btn-primary" id="confirmBtn">✦ Rename & Download ZIP</button>
       <button class="btn-secondary" id="btnBack3">← Back</button>
     </div>
   </div>
@@ -138,7 +142,7 @@
       <div class="success-sub" id="successMsg">Your renamed photos have been downloaded.</div>
       <div class="log-reminder">
         <div class="log-reminder-title">⚠ Save your log file</div>
-        <div class="log-reminder-text">A file called <strong>renamer-log.json</strong> was downloaded alongside your photos.<br>Keep it — you'll upload it next time so numbers stay in sequence.</div>
+        <div class="log-reminder-text">Inside the ZIP you will find a <strong>renamer-log.json</strong> file.<br>Take it out and keep it safe — upload it next time so numbers stay in sequence.</div>
       </div>
       <div class="actions" style="justify-content:center">
         <button class="btn-primary" id="btnStartOver">Rename More Photos</button>
@@ -147,7 +151,9 @@
   </div>
   <footer>photos.dm7m.com — built for personal use</footer>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 var memoryLog = {}, selectedFiles = [], previewData = [], sessionLog = {};
 
@@ -234,26 +240,48 @@ function renderPreview(warnCount) {
 }
 
 document.getElementById('confirmBtn').addEventListener('click', function() {
-  var btn = document.getElementById('confirmBtn'); btn.disabled = true; btn.textContent = 'Preparing downloads…';
-  var i = 0;
-  function dlNext() {
-    if (i>=previewData.length) { dlLog(); return; }
-    var item = previewData[i++];
-    var url = URL.createObjectURL(item.file);
-    var a = document.createElement('a'); a.href=url; a.download=item.newName;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); dlNext(); }, 400);
+  var btn = document.getElementById('confirmBtn');
+  btn.disabled = true; btn.textContent = 'Building ZIP…';
+  var pb = document.getElementById('progressBar');
+  var pf = document.getElementById('progressFill');
+  pb.classList.add('visible'); pf.style.width = '0%';
+
+  var zip = new JSZip();
+  var total = previewData.length;
+  var done = 0;
+
+  function addNext() {
+    if (done >= total) {
+      pf.style.width = '95%';
+      // Add log file to zip
+      zip.file('renamer-log.json', JSON.stringify(sessionLog, null, 2));
+      // Generate zip
+      zip.generateAsync({ type:'blob', compression:'STORE' }).then(function(blob) {
+        pf.style.width = '100%';
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'renamed-photos.zip';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+        document.getElementById('successMsg').textContent =
+          total+' photo'+(total!==1?'s':'')+' renamed and downloaded as renamed-photos.zip';
+        showStep(4);
+      });
+      return;
+    }
+    var item = previewData[done];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      zip.file(item.newName, e.target.result);
+      done++;
+      pf.style.width = Math.round((done/total)*90)+'%';
+      addNext();
+    };
+    reader.readAsArrayBuffer(item.file);
   }
-  function dlLog() {
-    var blob = new Blob([JSON.stringify(sessionLog,null,2)],{type:'application/json'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a'); a.href=url; a.download='renamer-log.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); },300);
-    document.getElementById('successMsg').textContent = previewData.length+' photo'+(previewData.length!==1?'s':'')+' renamed and downloaded.';
-    showStep(4);
-  }
-  dlNext();
+
+  addNext();
 });
 
 document.getElementById('btnStartOver').addEventListener('click', function() {
@@ -263,6 +291,9 @@ document.getElementById('btnStartOver').addEventListener('click', function() {
   var k = Object.keys(memoryLog).length;
   document.getElementById('logStatus').textContent = 'Log active — '+k+' date(s) remembered';
   document.getElementById('logStatus').className = 'log-status loaded';
+  document.getElementById('progressBar').classList.remove('visible');
+  document.getElementById('confirmBtn').disabled = false;
+  document.getElementById('confirmBtn').textContent = '✦ Rename & Download ZIP';
   showStep(1);
 });
 
